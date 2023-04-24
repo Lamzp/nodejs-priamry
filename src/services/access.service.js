@@ -1,7 +1,7 @@
 "use strict";
 
 const bcrypt = require("bcrypt");
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 const shopModel = require("../models/shop.model");
 const KeyTokenService = require("./keyToken.service");
 const { createTokenPair } = require("../auth/authUtils");
@@ -34,37 +34,40 @@ class AccessService {
       });
       if (newShop) {
         // create publicKey, privateKey
-        const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
-          modulusLength: 4096,
-          publicKeyEncoding: {
-            type: "pkcs1",
-            format: "pem",
-          },
-          privateKeyEncoding: {
-            type: "pkcs1",
-            format: "pem",
-          },
-        });
+        // const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
+        //   modulusLength: 4096,
+        //   publicKeyEncoding: {
+        //     type: "pkcs1",
+        //     format: "pem",
+        //   },
+        //   privateKeyEncoding: {
+        //     type: "pkcs1",
+        //     format: "pem",
+        //   },
+        // });
         // public key CryptoGraphy Standards !
+
+        const publicKey = crypto.randomBytes(64).toString("hex");
+        const privateKey = crypto.randomBytes(64).toString("hex");
         console.log({ privateKey, publicKey }); // save collection KeyStore
 
-        const publicKeyString = await KeyTokenService.createKeyToKen({
+        const keyStore = await KeyTokenService.createKeyToKen({
           userId: newShop._id,
           publicKey,
+          privateKey,
         });
 
-        if (!publicKeyString) {
+        if (!keyStore) {
           return {
             code: "xxx",
-            message: "publickeyString error",
+            message: "keyStore error",
           };
         }
 
-        const publicKeyObject = crypto.createPublicKey(publicKeyString);
         // create token pair
         const tokens = await createTokenPair(
           { userId: newShop._id, email },
-          publicKeyObject,
+          publicKey,
           privateKey
         );
         console.log(`Create Token Success:::`, tokens);
@@ -85,6 +88,7 @@ class AccessService {
         metadata: null,
       };
     } catch (error) {
+      console.error(error);
       return {
         code: "xxx",
         message: error.message,
