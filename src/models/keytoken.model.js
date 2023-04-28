@@ -21,9 +21,13 @@ const keyTokenSchema = new Schema(
       type: String,
       required: true,
     },
-    refreshToken: {
+    refreshTokensUsed: {
       type: Array,
-      default: [],
+      default: [], // nhung RT da dc su dung
+    },
+    refreshToken: {
+      type: String,
+      require: true,
     },
   },
   {
@@ -32,5 +36,4 @@ const keyTokenSchema = new Schema(
   }
 );
 
-//Export the model
 module.exports = model(DOCUMENT_NAME, keyTokenSchema);
