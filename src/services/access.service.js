@@ -24,43 +24,29 @@ class AccessService {
   /*
     check this token used?
   */
-  static handlerRefreshToken = async (refreshToken) => {
-    // check xem token da duoc su dung hay chua?
-    const foundToken = await KeyTokenService.findByRefreshTokenUsed(
-      refreshToken
-    );
-    // neu co
-    if (foundToken) {
-      // decode xem may la thang nao?
-      const { userId, email } = verifyJWT(refreshToken, foundToken.privateKey);
-      console.log({ userId, email });
-      // xoa tat ca token trong keyStore
+  static handlerRefreshToken = async ({ keyStore, user, refreshToken }) => {
+    const { userId, email } = user;
+
+    if (keyStore.refreshTokensUsed.includes(refreshToken)) {
       await KeyTokenService.deleteKeyById(userId);
       throw new ForbiddenError("Something wrong happend !! Pls relogin");
     }
-    // No, qua ngon
-    const holderToken = KeyTokenService.findByRefreshToken(refreshToken);
-    if (!holderToken) throw new AuthFailureError(" Shop not registered");
 
-    // verifyToken
-    const { userId, email } = await verifyJWT(
-      refreshToken,
-      holderToken.privateKey
-    );
-    console.log("[2]-- ", { userId, email });
-    // check UserId
+    if (keyStore.refreshToken !== refreshToken) {
+      throw new AuthFailureError(" Shop not registered");
+    }
     const foundShop = await findByEmail({ email });
     if (!foundShop) throw new AuthFailureError("Shop not registered");
 
     // create 1 cap moi
     const tokens = await createTokenPair(
       { userId, email },
-      holderToken.publicKey,
-      holderToken.privateKey
+      keyStore.publicKey,
+      keyStore.privateKey
     );
 
     // update token
-    await holderToken.update({
+    await keyStore.updateOne({
       $set: {
         refreshToken: tokens.refreshToken,
       },
@@ -69,7 +55,7 @@ class AccessService {
       },
     });
     return {
-      user: { userId, email },
+      user,
       tokens,
     };
   };
